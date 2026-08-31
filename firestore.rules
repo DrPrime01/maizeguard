@@ -1,0 +1,60 @@
+rules_version = '2';
+
+// Security rules for MaizeGuard (PRD §14, AT-09).
+//
+// Every record lives under the owning user's document, so ownership is a path
+// property rather than a field that could be spoofed. A signed-in user can
+// reach their own subtree and nothing else.
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // The label set is duplicated here on purpose. AT-11 says no other disease
+    // class can be returned; enforcing it server-side means a tampered or
+    // out-of-date client cannot write a class the product does not support.
+    function isSupportedDisease(disease) {
+      return disease in ['msv', 'common_rust', 'grey_leaf_spot', 'healthy'];
+    }
+
+    function validScan() {
+      let d = request.resource.data;
+      return d.scanId is string
+          && d.userId is string
+          && d.userId == request.auth.uid
+          && isSupportedDisease(d.disease)
+          && d.confidence is number
+          && d.confidence >= 0 && d.confidence <= 1
+          && d.accepted is bool
+          && d.capturedAt is string
+          // Coordinates are optional: an observation taken with no GPS fix is
+          // still a valid record (AT-04 is conditional on availability).
+          && (d.latitude == null || (d.latitude is number
+              && d.latitude >= -90 && d.latitude <= 90))
+          && (d.longitude == null || (d.longitude is number
+              && d.longitude >= -180 && d.longitude <= 180));
+    }
+
+    match /users/{userId} {
+      allow read: if isOwner(userId);
+      // Profile writes are limited to the user's own document.
+      allow create, update: if isOwner(userId);
+      allow delete: if false;
+
+      match /scans/{scanId} {
+        allow read: if isOwner(userId);
+        allow create, update: if isOwner(userId) && validScan();
+        // Observations are a research record; deletion is not exposed to the
+        // client. Removing one is a deliberate console/admin action.
+        allow delete: if false;
+      }
+    }
+
+    // Anything not matched above is denied.
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}
