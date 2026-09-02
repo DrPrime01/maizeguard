@@ -19,7 +19,7 @@ import '../services/sync_service.dart';
 ///
 /// This is the single switch between the stub used during development and the
 /// real classifier — see section 10 of `ml/maize_guard_training.ipynb`.
-const bool kUseTrainedModel = false;
+const bool kUseTrainedModel = true;
 
 /// Set at startup by `main()`: whether `Firebase.initializeApp()` succeeded.
 /// Overridden in the root [ProviderScope], never read before that.

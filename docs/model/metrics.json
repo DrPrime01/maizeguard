@@ -1,0 +1,63 @@
+{
+  "trained_at": "2026-09-02T01:35:47",
+  "class_names": [
+    "msv",
+    "common_rust",
+    "grey_leaf_spot",
+    "healthy"
+  ],
+  "test_accuracy": 0.9844559585492227,
+  "macro_precision": 0.9741379310344828,
+  "macro_recall": 0.9855593607305936,
+  "macro_f1": 0.9790180407827467,
+  "confusion_matrix": [
+    [
+      140,
+      0,
+      6,
+      0
+    ],
+    [
+      0,
+      177,
+      3,
+      0
+    ],
+    [
+      0,
+      0,
+      78,
+      0
+    ],
+    [
+      0,
+      0,
+      0,
+      175
+    ]
+  ],
+  "split_summary": {
+    "msv": {
+      "train": 675,
+      "val": 144,
+      "test": 146
+    },
+    "common_rust": {
+      "train": 834,
+      "val": 178,
+      "test": 180
+    },
+    "grey_leaf_spot": {
+      "train": 359,
+      "val": 76,
+      "test": 78
+    },
+    "healthy": {
+      "train": 813,
+      "val": 174,
+      "test": 175
+    }
+  },
+  "tflite_fp16_bytes": 4473560,
+  "tflite_int8_bytes": 2715016
+}
