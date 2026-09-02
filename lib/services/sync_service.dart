@@ -43,21 +43,7 @@ class SyncService {
   final FirestoreScanSource _remote;
   final ConnectivityService _connectivity;
 
-  StreamSubscription<bool>? _subscription;
   Future<SyncOutcome>? _inFlight;
-
-  /// Watches for the device coming back online and sweeps automatically.
-  void startAutoSync(String userId) {
-    _subscription?.cancel();
-    _subscription = _connectivity.onStatusChange.listen((online) {
-      if (online) unawaited(syncNow(userId));
-    });
-  }
-
-  void stopAutoSync() {
-    _subscription?.cancel();
-    _subscription = null;
-  }
 
   /// Uploads everything pending for [userId].
   ///
@@ -91,5 +77,5 @@ class SyncService {
     }
   }
 
-  void dispose() => stopAutoSync();
+  void dispose() {}
 }

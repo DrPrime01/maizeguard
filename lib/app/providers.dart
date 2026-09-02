@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 
 import '../data/local/scan_dao.dart';
@@ -159,14 +161,39 @@ class SyncController extends Notifier<SyncOutcome> {
     // Auto-sync only makes sense with a real cloud account behind it.
     final userId = ref.watch(currentUserIdProvider);
     final canSync = ref.watch(authServiceProvider).supportsSync;
+
     if (userId != null && canSync) {
-      final service = ref.watch(syncServiceProvider)..startAutoSync(userId);
-      ref.onDispose(service.stopAutoSync);
+      // The trigger lives here rather than inside SyncService so that every
+      // sweep — automatic or manual — goes through syncNow() below and so
+      // refreshes the UI. Driving it from the service directly updated the
+      // database but left the dashboard showing stale "pending" rows.
+      ref.listen<AsyncValue<bool>>(isOnlineProvider, (previous, next) {
+        final cameOnline = previous?.value != true && next.value == true;
+        if (cameOnline) unawaited(_sweepUntilClear());
+      });
+      // And once on startup, to drain anything left from a previous session.
+      unawaited(_sweepUntilClear());
     }
     return SyncOutcome.idle;
   }
 
   bool get _enabled => ref.read(authServiceProvider).supportsSync;
+
+  /// Sweeps, retrying with backoff while records remain.
+  ///
+  /// A connectivity event fires when the network *interface* appears, which is
+  /// routinely before the link can actually carry a request — the first sweep
+  /// after reconnecting would otherwise find no usable network, give up, and
+  /// wait for an event that never comes. Retrying a few times with increasing
+  /// delay covers that window without polling forever.
+  Future<void> _sweepUntilClear({int attempts = 4}) async {
+    for (var attempt = 0; attempt < attempts; attempt++) {
+      await Future<void>.delayed(Duration(seconds: 2 * (attempt + 1)));
+      if (!ref.mounted) return;
+      await syncNow();
+      if (state.remaining == 0) return;
+    }
+  }
 
   Future<void> syncNow() async {
     final userId = ref.read(currentUserIdProvider);
